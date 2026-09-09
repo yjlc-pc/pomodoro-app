@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Pomodoro
+Comment=A Material Design 3 Pomodoro timer app
+Exec=/opt/pomodoro_app/tomato
+Icon=pomodoro_app
+Type=Application
+Categories=Productivity;Utility;
+Terminal=false
