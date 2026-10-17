@@ -147,7 +147,6 @@ class _WindowTitleBarState extends State<WindowTitleBar>
                         widget.title,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                               color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
                             ),
                       ),
                     ],

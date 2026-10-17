@@ -21,6 +21,37 @@
 
 ## B. 主题（根治「太丑」）— AppTheme 集中组件化
 
+> **⚠️ 勘误（2026-10-17，polish/m3-canonical 分支）——本节已被推翻，不要照此实施。**
+>
+> 核对 Flutter 3.44.2 源码后发现，本节 15 项要求里**只有 2 项与 Flutter 内建的 M3
+> 默认值不同**，其余 13 项都是把默认值原样抄了一遍。Flutter 的 M3 默认值本身由
+> Material Design token 数据库自动生成（源码中带 `BEGIN GENERATED TOKEN
+> PROPERTIES` 标记），也就是说**默认值就是规范**。
+>
+> | 本节要求 | Flutter M3 默认值 | 差异 |
+> |---|---|---|
+> | Dialog：surfaceContainerHigh / elev 6 / 圆角 28 | 完全相同 | 无 |
+> | BottomSheet：surfaceContainerLow / 顶角 28 | 完全相同 | 无 |
+> | Snackbar：inverseSurface / 圆角 4 | 完全相同 | 无 |
+> | Chip 圆角 8 | 8.0 | 无 |
+> | FAB 圆角 16 / elev 6 | 完全相同 | 无 |
+> | TextField 顶角 4、Menu 圆角 4 | 完全相同 | 无 |
+> | 按钮全胶囊 | M3 按钮本就是胶囊 | 无 |
+> | NavBar/Rail：secondaryContainer 指示器、elev 0 | 完全相同 | 无 |
+> | AppBar elevation 0 | 0.0 | 无 |
+> | Card：surfaceContainerLow / 圆角 12 | 完全相同 | 无 |
+> | **Card elevation 0** | **1.0** | **有** |
+> | **AppBar scrolledUnderElevation 0** | **3.0** | **有** |
+>
+> 照此实施会新增约 150 行零效果的转录，并永久承担「手工 token 随 Flutter 升级
+> 漂移」的风险。更重要的是：本节自称「根治太丑」，但如果这些值本来就是默认值，
+> 它并没有解释过这个 App 究竟哪里丑——**它在没有核对实现的前提下写了方案**。
+>
+> **本轮实际落地**：全局 `tabularFigures`（治倒计时数字左右抖动）、删除
+> `window_title_bar` 的手写 `w600`。那 2 项真偏离经决定**都不采纳**——卡片保留
+> 默认 elevation 1，AppBar 保留默认 `scrolledUnderElevation` 3（那是 M3 真实的
+> 滚动反馈，待办/统计页滚动时需要它）。
+
 - 种子保持 `#C62828`（番茄）、secondary `#006A6A`、tertiary `#7D5260` → `ColorScheme.fromSeed`，**零手调 hex**。
 - **组件主题**（light + dark 同构）：
   - Card：`surfaceContainerLow`、elevation 0、radius 12（去阴影）

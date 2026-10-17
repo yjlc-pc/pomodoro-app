@@ -75,4 +75,41 @@ void main() {
       expect(theme.colorScheme.primary, isNotNull);
     });
   });
+
+  group('tabular figures', () {
+    bool hasTabularFigures(TextStyle? style) =>
+        style?.fontFeatures?.any((f) => f.feature == 'tnum') ?? false;
+
+    test('are enabled on every role of both themes', () {
+      for (final theme in [AppTheme.light(), AppTheme.dark()]) {
+        for (final style in _allStyles(theme.textTheme)) {
+          expect(hasTabularFigures(style), isTrue,
+              reason: 'a role lost tabular figures');
+        }
+      }
+    });
+
+    test('leave the token scale itself untouched', () {
+      // theme_test's spec-value assertions read AppTheme.typeScale directly, so
+      // it must stay free of theme-level decoration.
+      for (final style in _allStyles(AppTheme.typeScale)) {
+        expect(hasTabularFigures(style), isFalse);
+      }
+    });
+
+    test('keep the size and weight tokens unchanged', () {
+      expect(AppTheme.light().textTheme.displayLarge?.fontSize,
+          AppTheme.typeScale.displayLarge?.fontSize);
+      expect(AppTheme.light().textTheme.labelLarge?.fontWeight,
+          AppTheme.typeScale.labelLarge?.fontWeight);
+    });
+  });
 }
+
+List<TextStyle?> _allStyles(TextTheme theme) => [
+      theme.displayLarge, theme.displayMedium, theme.displaySmall,
+      theme.headlineLarge, theme.headlineMedium, theme.headlineSmall,
+      theme.titleLarge, theme.titleMedium, theme.titleSmall,
+      theme.bodyLarge, theme.bodyMedium, theme.bodySmall,
+      theme.labelLarge, theme.labelMedium, theme.labelSmall,
+    ];

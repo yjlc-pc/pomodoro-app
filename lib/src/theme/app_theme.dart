@@ -21,32 +21,79 @@ abstract final class AppTheme {
   /// tokens). Geometry lives in [Typography.englishLike]; color-only platform
   /// themes are merged in at `Theme.of` time. Exposed so callers can reference
   /// spec values without hand-rolling sizes or weights.
+  ///
+  /// This is the untouched token scale and is what `test/theme_test.dart`
+  /// asserts against. The theme actually installed by [light] / [dark] layers
+  /// one extra typographic feature on top — see [_tabularDigits].
   static TextTheme get typeScale => Typography.material2021().englishLike;
 
-  static ThemeData light() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seed,
-      secondary: _secondarySeed,
-      tertiary: _tertiarySeed,
-    );
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      brightness: Brightness.light,
-    );
+  /// Equal-width digits, applied to every role in the theme.
+  ///
+  /// The app is full of numbers that change while you look at them: the
+  /// countdown ticks every second, the stats page re-renders totals, the
+  /// session dots count up. With proportional figures those glyphs have
+  /// differing advance widths, so the text visibly jitters sideways on each
+  /// change — most obviously on `MM:SS`, where the colon makes every digit
+  /// shift. `tabularFigures` fixes the advance width so only the glyphs
+  /// change, never the layout.
+  ///
+  /// This is a font *feature*, not a size or weight override, so the M3 type
+  /// scale itself is untouched.
+  static const List<FontFeature> _tabularDigits = <FontFeature>[
+    FontFeature.tabularFigures(),
+  ];
+
+  /// The four-character OpenType tag that enables tabular figures.
+  static const String _tabularTag = 'tnum';
+
+  /// Applies [_tabularDigits] to every role of [base].
+  ///
+  /// `TextTheme.apply` has no `fontFeatures` parameter, so the roles are mapped
+  /// by hand. Any features a role already carries are preserved; an existing
+  /// `tnum` is replaced rather than duplicated.
+  static TextTheme _withTabularDigits(TextTheme base) => TextTheme(
+        displayLarge: _digits(base.displayLarge),
+        displayMedium: _digits(base.displayMedium),
+        displaySmall: _digits(base.displaySmall),
+        headlineLarge: _digits(base.headlineLarge),
+        headlineMedium: _digits(base.headlineMedium),
+        headlineSmall: _digits(base.headlineSmall),
+        titleLarge: _digits(base.titleLarge),
+        titleMedium: _digits(base.titleMedium),
+        titleSmall: _digits(base.titleSmall),
+        bodyLarge: _digits(base.bodyLarge),
+        bodyMedium: _digits(base.bodyMedium),
+        bodySmall: _digits(base.bodySmall),
+        labelLarge: _digits(base.labelLarge),
+        labelMedium: _digits(base.labelMedium),
+        labelSmall: _digits(base.labelSmall),
+      );
+
+  static TextStyle? _digits(TextStyle? style) {
+    if (style == null) return null;
+    final existing = style.fontFeatures ?? const <FontFeature>[];
+    return style.copyWith(fontFeatures: <FontFeature>[
+      ...existing.where((f) => f.feature != _tabularTag),
+      ..._tabularDigits,
+    ]);
   }
 
-  static ThemeData dark() {
+  static ThemeData light() => _build(Brightness.light);
+
+  static ThemeData dark() => _build(Brightness.dark);
+
+  static ThemeData _build(Brightness brightness) {
     final scheme = ColorScheme.fromSeed(
       seedColor: _seed,
       secondary: _secondarySeed,
       tertiary: _tertiarySeed,
-      brightness: Brightness.dark,
+      brightness: brightness,
     );
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      brightness: Brightness.dark,
+      brightness: brightness,
+      textTheme: _withTabularDigits(typeScale),
     );
   }
 }
