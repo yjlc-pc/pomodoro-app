@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 
+import '../format/date_formats.dart';
 import '../models/focus_stats_store.dart';
 import 'main_shell.dart' show kCompactBreakpoint;
 
@@ -131,8 +131,6 @@ class _DailyHistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final dateFormat = DateFormat('yyyy年M月d日', 'zh_CN');
-    final weekdayFormat = DateFormat('EEEE', 'zh_CN');
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -147,7 +145,7 @@ class _DailyHistoryTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        dateFormat.format(stat.date),
+        fullDateFormat.format(stat.date),
         style: Theme.of(context).textTheme.titleMedium,
       ),
       subtitle: Text(
@@ -173,8 +171,9 @@ class _WeeklyHistorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 生成最近 8 周（含当周）的周汇总
-    final weeklySummaries = _buildWeeklySummaries(store);
+    // 聚合由 FocusStatsStore 提供；空周在这里过滤，索引仍取自 store 的原始
+    // 桶位，所以「本周」标记不会因为前面的空周被跳过而错标到更早的一周。
+    final weeklySummaries = _labelledWeeks(store);
     if (weeklySummaries.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -194,7 +193,7 @@ class _WeeklyHistorySection extends StatelessWidget {
               return _WeeklyHistoryTile(
                 weekLabel: summary.label,
                 summary: summary.summary,
-                isCurrentWeek: index == 0,
+                isCurrentWeek: summary.isCurrent,
               );
             },
           ),
@@ -203,35 +202,36 @@ class _WeeklyHistorySection extends StatelessWidget {
     );
   }
 
-  List<_WeeklySummaryWithLabel> _buildWeeklySummaries(FocusStatsStore store) {
-    final result = <_WeeklySummaryWithLabel>[];
-    final now = DateTime.now();
-    for (var i = 0; i < 8; i++) {
-      final weekStart = now.subtract(Duration(days: now.weekday - 1 + i * 7));
-      final weekEnd = weekStart.add(const Duration(days: 6));
-      var count = 0;
-      var minutes = 0;
-      for (final s in store.dailyStats) {
-        if (!s.date.isBefore(weekStart) && !s.date.isAfter(weekEnd)) {
-          count += s.pomodoroCount;
-          minutes += s.focusMinutes;
-        }
-      }
-      if (count == 0 && minutes == 0) continue;
-      result.add(_WeeklySummaryWithLabel(
-        label: i == 0 ? '本周' : '$i 周前',
-        summary: PeriodSummary(pomodoroCount: count, focusMinutes: minutes),
-      ));
-    }
-    return result;
+  List<_LabelledPeriod> _labelledWeeks(FocusStatsStore store) {
+    final buckets = store.weeklySummaries(count: 8);
+    return [
+      for (var i = 0; i < buckets.length; i++)
+        if (_hasData(buckets[i].summary))
+          _LabelledPeriod(
+            label: i == 0 ? '本周' : '$i 周前',
+            summary: buckets[i].summary,
+            isCurrent: i == 0,
+          ),
+    ];
   }
 }
 
-class _WeeklySummaryWithLabel {
-  const _WeeklySummaryWithLabel({required this.label, required this.summary});
+/// A [PeriodSummary] with the display label the history screen shows and
+/// whether it is the period the user is currently living in.
+class _LabelledPeriod {
+  const _LabelledPeriod({
+    required this.label,
+    required this.summary,
+    required this.isCurrent,
+  });
+
   final String label;
   final PeriodSummary summary;
+  final bool isCurrent;
 }
+
+bool _hasData(PeriodSummary summary) =>
+    summary.pomodoroCount > 0 || summary.focusMinutes > 0;
 
 class _WeeklyHistoryTile extends StatelessWidget {
   const _WeeklyHistoryTile({
@@ -287,7 +287,7 @@ class _MonthlyHistorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final monthlySummaries = _buildMonthlySummaries(store);
+    final monthlySummaries = _labelledMonths(store);
     if (monthlySummaries.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -307,7 +307,7 @@ class _MonthlyHistorySection extends StatelessWidget {
               return _MonthlyHistoryTile(
                 monthLabel: summary.label,
                 summary: summary.summary,
-                isCurrentMonth: index == 0,
+                isCurrentMonth: summary.isCurrent,
               );
             },
           ),
@@ -316,35 +316,20 @@ class _MonthlyHistorySection extends StatelessWidget {
     );
   }
 
-  List<_MonthlySummaryWithLabel> _buildMonthlySummaries(FocusStatsStore store) {
-    final result = <_MonthlySummaryWithLabel>[];
-    final now = DateTime.now();
-    for (var i = 0; i < 12; i++) {
-      final monthStart = DateTime(now.year, now.month - i, 1);
-      final monthEnd = DateTime(now.year, now.month - i + 1, 0);
-      var count = 0;
-      var minutes = 0;
-      for (final s in store.dailyStats) {
-        if (!s.date.isBefore(monthStart) && !s.date.isAfter(monthEnd)) {
-          count += s.pomodoroCount;
-          minutes += s.focusMinutes;
-        }
-      }
-      if (count == 0 && minutes == 0) continue;
-      final label = i == 0 ? '本月' : '${monthStart.year}年${monthStart.month}月';
-      result.add(_MonthlySummaryWithLabel(
-        label: label,
-        summary: PeriodSummary(pomodoroCount: count, focusMinutes: minutes),
-      ));
-    }
-    return result;
+  List<_LabelledPeriod> _labelledMonths(FocusStatsStore store) {
+    final buckets = store.monthlySummaries(count: 12);
+    return [
+      for (var i = 0; i < buckets.length; i++)
+        if (_hasData(buckets[i].summary))
+          _LabelledPeriod(
+            label: i == 0
+                ? '本月'
+                : '${buckets[i].start.year}年${buckets[i].start.month}月',
+            summary: buckets[i].summary,
+            isCurrent: i == 0,
+          ),
+    ];
   }
-}
-
-class _MonthlySummaryWithLabel {
-  const _MonthlySummaryWithLabel({required this.label, required this.summary});
-  final String label;
-  final PeriodSummary summary;
 }
 
 class _MonthlyHistoryTile extends StatelessWidget {

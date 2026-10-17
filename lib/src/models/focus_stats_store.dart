@@ -38,6 +38,18 @@ class PeriodSummary {
   final int focusMinutes;
 }
 
+/// A [PeriodSummary] together with the calendar period it covers.
+@immutable
+class PeriodAggregate {
+  const PeriodAggregate({required this.start, required this.summary});
+
+  /// First day of the covered period, at local midnight. For a weekly
+  /// aggregate this is always the Monday of that week.
+  final DateTime start;
+
+  final PeriodSummary summary;
+}
+
 /// Persists naturally-completed focus sessions and derives statistics.
 ///
 /// Data is pre-aggregated per day into a [Map] keyed by a normalized
@@ -160,6 +172,56 @@ class FocusStatsStore extends ChangeNotifier {
     return (current.focusMinutes - previous.focusMinutes) /
         previous.focusMinutes *
         100;
+  }
+
+  /// Calendar weeks (Monday–Sunday) covering the week that contains [now] and
+  /// the [count] weeks before it, newest first.
+  ///
+  /// Every bucket is returned even when it holds no completed focus, so callers
+  /// decide whether to render a gap. All period boundaries are local midnight
+  /// and are built via the [DateTime] constructor (not [Duration] arithmetic on
+  /// a wall-clock time), so each week's Monday lands in that week instead of
+  /// falling through to the previous one.
+  List<PeriodAggregate> weeklySummaries({int count = 8, DateTime? now}) {
+    final today = _dayOf(now ?? _clock());
+    return [
+      for (var i = 0; i < count; i++)
+        _aggregate(
+          DateTime(today.year, today.month, today.day - (today.weekday - 1 + i * 7)),
+          (start) => DateTime(start.year, start.month, start.day + 6),
+        ),
+    ];
+  }
+
+  /// Calendar months covering the month that contains [now] and the [count]
+  /// months before it, newest first. Empty months are returned, not skipped.
+  List<PeriodAggregate> monthlySummaries({int count = 12, DateTime? now}) {
+    final today = _dayOf(now ?? _clock());
+    return [
+      for (var i = 0; i < count; i++)
+        _aggregate(
+          DateTime(today.year, today.month - i, 1),
+          (start) => DateTime(start.year, start.month + 1, 0),
+        ),
+    ];
+  }
+
+  /// Sums every day bucket whose date falls inside [start]..[endOf(start)],
+  /// both inclusive and both at local midnight.
+  PeriodAggregate _aggregate(DateTime start, DateTime Function(DateTime) endOf) {
+    final end = endOf(start);
+    var count = 0;
+    var minutes = 0;
+    for (final s in _buckets.values) {
+      if (!s.date.isBefore(start) && !s.date.isAfter(end)) {
+        count += s.pomodoroCount;
+        minutes += s.focusMinutes;
+      }
+    }
+    return PeriodAggregate(
+      start: start,
+      summary: PeriodSummary(pomodoroCount: count, focusMinutes: minutes),
+    );
   }
 
   PeriodSummary _rollingPeriod(DateTime ref, int days, int offset) {

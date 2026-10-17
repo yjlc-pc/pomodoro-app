@@ -162,4 +162,98 @@ void main() {
       expect(pct, 100.0);
     });
   });
+
+  group('weeklySummaries', () {
+    test('includes the Monday of every week', () {
+      // Regression: week boundaries used to be computed by subtracting a
+      // Duration from a wall-clock `now`, so a week's Monday (00:00) fell
+      // *before* the computed start (12:00) and was silently dropped.
+      final store = FocusStatsStore(clock: clock);
+      store.record(DateTime(2024, 1, 15), 25); // Monday, the week start
+      store.record(DateTime(2024, 1, 21), 25); // Sunday, the week end
+
+      final weeks = store.weeklySummaries(count: 2);
+
+      expect(weeks[0].start, DateTime(2024, 1, 15));
+      expect(weeks[0].summary.pomodoroCount, 2);
+      expect(weeks[0].summary.focusMinutes, 50);
+    });
+
+    test('every bucket starts on a Monday', () {
+      final store = FocusStatsStore(clock: clock);
+      for (final week in store.weeklySummaries(count: 8)) {
+        expect(week.start.weekday, DateTime.monday);
+        expect(week.start, DateTime(week.start.year, week.start.month, week.start.day));
+      }
+    });
+
+    test('returns count buckets newest-first including empty ones', () {
+      final store = FocusStatsStore(clock: clock);
+      store.record(DateTime(2024, 1, 15), 25);
+
+      final weeks = store.weeklySummaries(count: 4);
+
+      expect(weeks, hasLength(4));
+      expect(weeks[0].summary.pomodoroCount, 1);
+      for (final week in weeks.skip(1)) {
+        expect(week.summary.pomodoroCount, 0);
+      }
+      // Newest first: each bucket is exactly 7 days before the previous one.
+      expect(weeks[1].start, weeks[0].start.subtract(const Duration(days: 7)));
+    });
+
+    test('does not leak a day into two adjacent weeks', () {
+      // now is Monday 2024-01-15, so bucket 0 is Jan 15–21 and bucket 1 is
+      // Jan 8–14. The Sunday/Monday boundary is where an off-by-one would
+      // double-count or drop a day.
+      final store = FocusStatsStore(clock: clock);
+      store.record(DateTime(2024, 1, 14), 25); // Sunday, closes bucket 1
+      store.record(DateTime(2024, 1, 15), 25); // Monday, opens bucket 0
+
+      final weeks = store.weeklySummaries(count: 2);
+
+      expect(weeks[0].start, DateTime(2024, 1, 15));
+      expect(weeks[0].summary.pomodoroCount, 1);
+      expect(weeks[1].start, DateTime(2024, 1, 8));
+      expect(weeks[1].summary.pomodoroCount, 1);
+    });
+  });
+
+  group('monthlySummaries', () {
+    test('buckets span whole calendar months newest-first', () {
+      // now is 2024-01-15, so bucket 0 is January and bucket 1 is December.
+      final store = FocusStatsStore(clock: clock);
+      store.record(DateTime(2023, 12, 31), 25); // last day of December
+      store.record(DateTime(2024, 1, 1), 25); // first day of January
+
+      final months = store.monthlySummaries(count: 2);
+
+      expect(months[0].start, DateTime(2024, 1, 1));
+      expect(months[0].summary.pomodoroCount, 1);
+      expect(months[1].start, DateTime(2023, 12, 1));
+      expect(months[1].summary.pomodoroCount, 1);
+    });
+
+    test('includes the first day of the month', () {
+      final store = FocusStatsStore(clock: clock);
+      store.record(DateTime(2024, 1, 1), 25);
+
+      final months = store.monthlySummaries(count: 1);
+
+      expect(months.single.start, DateTime(2024, 1, 1));
+      expect(months.single.summary.pomodoroCount, 1);
+    });
+
+    test('returns count buckets including empty ones', () {
+      final store = FocusStatsStore(clock: clock);
+      store.record(DateTime(2024, 1, 15), 25);
+
+      final months = store.monthlySummaries(count: 3);
+
+      expect(months, hasLength(3));
+      expect(months[0].summary.pomodoroCount, 1);
+      expect(months[1].summary.pomodoroCount, 0);
+      expect(months[2].summary.pomodoroCount, 0);
+    });
+  });
 }
