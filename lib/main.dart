@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/audio/ambient_player.dart';
-import 'src/format/date_formats.dart';
 import 'src/models/focus_stats_store.dart';
 import 'src/models/todo_store.dart';
 import 'src/screens/main_shell.dart';
@@ -16,7 +15,6 @@ import 'src/widgets/window_title_bar.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await ensureDateFormatting();
   await _configureWindow();
   final prefs = await SharedPreferences.getInstance();
   final settingsController = SettingsController();

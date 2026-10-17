@@ -1,24 +1,29 @@
+import 'dart:async';
+
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
-/// Locales whose date symbols the app formats with.
-///
-/// `intl` keeps its locale tables in a separate, lazily-populated map: asking
-/// for a `DateFormat` with a locale that was never passed to
-/// [initializeDateFormatting] throws `LocaleDataException` at runtime rather
-/// than at build time. Loading them once up front is the only fix.
-const List<String> supportedDateLocales = <String>['zh_CN'];
-
+/// Locale the app formats dates in.
 const String _locale = 'zh_CN';
 
-/// Loads the date symbols for [supportedDateLocales].
+bool _symbolsLoaded = false;
+
+/// Loads intl's date symbols for the app's locale.
 ///
-/// Must be awaited before the first [fullDateFormat] / [weekdayFormat] is
-/// read. Safe to call more than once.
-Future<void> ensureDateFormatting() async {
-  for (final locale in supportedDateLocales) {
-    await initializeDateFormatting(locale);
-  }
+/// `intl` keeps its locale tables in a lazily-populated map and throws
+/// `LocaleDataException` for any locale that was never loaded, so this has to
+/// run before the first [DateFormat] is built. Despite the `Future` return
+/// type, `initializeDateFormatting` does its work *synchronously* and then
+/// returns `Future.value()` — which is why this can be called from a getter
+/// rather than having to be awaited at some entry point. (Awaiting it in
+/// `main()` looked correct but bought nothing, and left every other entry
+/// point — most visibly widget tests — one forgotten call away from crashing.)
+///
+/// Safe to call repeatedly; the work happens once.
+void ensureDateFormatting() {
+  if (_symbolsLoaded) return;
+  _symbolsLoaded = true;
+  unawaited(initializeDateFormatting(_locale));
 }
 
 DateFormat? _fullDate;
@@ -28,7 +33,13 @@ DateFormat? _weekday;
 ///
 /// Cached because building a [DateFormat] parses its pattern every time, and
 /// these are read from `build` methods.
-DateFormat get fullDateFormat => _fullDate ??= DateFormat('yyyy年M月d日', _locale);
+DateFormat get fullDateFormat {
+  ensureDateFormatting();
+  return _fullDate ??= DateFormat('yyyy年M月d日', _locale);
+}
 
 /// Cached `EEEE` formatter, e.g. 「星期六」.
-DateFormat get weekdayFormat => _weekday ??= DateFormat('EEEE', _locale);
+DateFormat get weekdayFormat {
+  ensureDateFormatting();
+  return _weekday ??= DateFormat('EEEE', _locale);
+}
