@@ -78,6 +78,39 @@ abstract final class AppTheme {
     ]);
   }
 
+  /// Resolves every role's colour to its M3 colour role.
+  ///
+  /// `Typography.material2021().englishLike` carries geometry only — every
+  /// colour comes back null — so text ends up inheriting whatever
+  /// `DefaultTextStyle` happens to be in scope. That is fragile: it made the
+  /// largest text in the app (the countdown, `displayLarge`) inherit a colour
+  /// that is unreadable on the light surface, and it leaves dark mode resting
+  /// on the same accident.
+  ///
+  /// M3 assigns `onSurface` to the display/headline/title/body roles and
+  /// `onSurfaceVariant` to the label roles, so that mapping is applied here
+  /// once instead of per widget.
+  static TextTheme _withColors(TextTheme base, ColorScheme scheme) => TextTheme(
+        displayLarge: _tinted(base.displayLarge, scheme.onSurface),
+        displayMedium: _tinted(base.displayMedium, scheme.onSurface),
+        displaySmall: _tinted(base.displaySmall, scheme.onSurface),
+        headlineLarge: _tinted(base.headlineLarge, scheme.onSurface),
+        headlineMedium: _tinted(base.headlineMedium, scheme.onSurface),
+        headlineSmall: _tinted(base.headlineSmall, scheme.onSurface),
+        titleLarge: _tinted(base.titleLarge, scheme.onSurface),
+        titleMedium: _tinted(base.titleMedium, scheme.onSurface),
+        titleSmall: _tinted(base.titleSmall, scheme.onSurface),
+        bodyLarge: _tinted(base.bodyLarge, scheme.onSurface),
+        bodyMedium: _tinted(base.bodyMedium, scheme.onSurface),
+        bodySmall: _tinted(base.bodySmall, scheme.onSurface),
+        labelLarge: _tinted(base.labelLarge, scheme.onSurfaceVariant),
+        labelMedium: _tinted(base.labelMedium, scheme.onSurfaceVariant),
+        labelSmall: _tinted(base.labelSmall, scheme.onSurfaceVariant),
+      );
+
+  static TextStyle? _tinted(TextStyle? style, Color color) =>
+      style?.copyWith(color: color);
+
   static ThemeData light() => _build(Brightness.light);
 
   static ThemeData dark() => _build(Brightness.dark);
@@ -93,7 +126,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       brightness: brightness,
-      textTheme: _withTabularDigits(typeScale),
+      textTheme: _withColors(_withTabularDigits(typeScale), scheme),
     );
   }
 }
