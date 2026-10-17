@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/todo_item.dart';
 import '../models/todo_store.dart';
+import '../widgets/todo_detail_sheet.dart';
 import '../widgets/todo_tile.dart';
 
 /// The todo list, as a sliver suited to a [CustomScrollView].
@@ -42,6 +43,17 @@ class _TodoPanelState extends State<TodoPanel> {
   /// and a long-finished list never reappears expanded on its own.
   bool _showDone = false;
 
+  /// Ids of todos whose sub-steps are showing. Keyed by id rather than held as
+  /// a bool so that removing a todo cannot leave a stale entry behind, and so
+  /// several can be open at once.
+  final Set<String> _expanded = <String>{};
+
+  void _toggleExpanded(String id) {
+    setState(() {
+      if (!_expanded.remove(id)) _expanded.add(id);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<TodoStore>();
@@ -78,8 +90,13 @@ class _TodoPanelState extends State<TodoPanel> {
     Widget tileFor(TodoItem item) => TodoTile(
           item: item,
           variant: widget.wide ? TodoTileVariant.card : TodoTileVariant.list,
+          expanded: _expanded.contains(item.id),
+          onExpandedChanged: () => _toggleExpanded(item.id),
           onToggle: () => store.toggle(item.id),
           onRemove: () => store.remove(item.id),
+          onOpenDetail: () => showTodoDetailSheet(context, item.id),
+          onToggleSubtask: (subId) => store.toggleSubtask(item.id, subId),
+          onRemoveSubtask: (subId) => store.removeSubtask(item.id, subId),
         );
 
     if (widget.wide) {

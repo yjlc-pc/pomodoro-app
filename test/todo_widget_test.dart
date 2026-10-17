@@ -131,11 +131,12 @@ void main() {
     expect(find.byType(Checkbox), findsWidgets);
     expect(find.byType(Card), findsNothing);
 
-    // Wide: multi-column grid.
+    // Wide: multi-column grid. Both variants now use a Checkbox (the card used
+    // to use a bespoke icon), so the card-ness is what distinguishes them.
     await setSurfaceSize(tester, 1200);
     await tester.pumpWidget(await wrap(todoStore: store));
     await tester.pump();
-    expect(find.byType(Checkbox), findsNothing);
+    expect(find.byType(Checkbox), findsWidgets);
     expect(find.byType(Card), findsWidgets);
   });
 
