@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../audio/ambient_player.dart';
+import '../layout/breakpoints.dart';
 
 /// A play/pause toggle + current track label, rendered as a compact capsule
 /// that fits in an [AppBar.action]. Tapping the capsule opens a popup menu
@@ -9,19 +10,30 @@ class AudioMiniPlayer extends StatelessWidget {
   const AudioMiniPlayer({super.key});
 
   Future<void> _openPanel(BuildContext context) async {
-    await showMenu<void>(
-      context: context,
-      position: RelativeRect.fromLTRB(48, 56, 8, 0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      items: [
-        PopupMenuItem<void>(
-          enabled: false,
-          height: 220,
-          child: AudioPanelOverlay(),
+    // A real modal rather than a menu. The panel holds a Slider and ChoiceChips,
+    // which is more than a menu item can carry: the old implementation forced
+    // it into `PopupMenuItem(enabled: false, height: 220)` positioned at a
+    // hard-coded offset, which clipped on small windows and swallowed the
+    // slider's drag gesture on some platforms.
+    final isWide = MediaQuery.sizeOf(context).width >= kExpandedBreakpoint;
+    if (isWide) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('背景音'),
+          content: const SizedBox(width: 360, child: AudioPanelOverlay()),
         ),
-      ],
+      );
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => const Padding(
+        padding: EdgeInsets.fromLTRB(24, 0, 24, 32),
+        child: AudioPanelOverlay(),
+      ),
     );
   }
 
@@ -172,11 +184,11 @@ class AudioControlBar extends StatelessWidget {
     if (!player.available) {
       return Card(
         child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Icon(Icons.music_off_outlined),
-            const SizedBox(width: 16),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.music_off_outlined),
+              const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   player.lastError ?? '音频不可用',

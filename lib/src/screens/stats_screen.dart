@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/focus_stats_store.dart';
 import '../widgets/focus_chart.dart';
 import '../widgets/stats_summary.dart';
-import 'main_shell.dart' show kCompactBreakpoint;
+import '../layout/breakpoints.dart';
 
 const List<String> _weekdayLabels = ['一', '二', '三', '四', '五', '六', '日'];
 

@@ -33,7 +33,7 @@ class _FakeEngine implements AmbientEngine {
 }
 
 void main() {
-  Future<void> pumpPlayer(WidgetTester tester,
+  Future<AmbientPlayer> pumpPlayer(WidgetTester tester,
       {bool available = true, AmbientTrack? track}) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -57,6 +57,7 @@ void main() {
       ),
     );
     await tester.pump();
+    return player;
   }
 
   testWidgets('hidden when audio engine is unavailable', (tester) async {
@@ -80,5 +81,49 @@ void main() {
     expect(find.text('白噪音'), findsOneWidget);
     expect(find.byType(Slider), findsOneWidget);
     expect(find.text('选择背景音'), findsOneWidget);
+  });
+
+  testWidgets('opens a dialog on wide windows and a sheet on narrow ones',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpPlayer(tester);
+    await tester.tap(find.byType(AudioMiniPlayer));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+
+    await tester.tapAt(const Offset(640, 20)); // dismiss
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(AudioMiniPlayer));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('the volume slider stays draggable inside the panel',
+      (tester) async {
+    // The panel used to live in a disabled PopupMenuItem, which swallowed the
+    // slider's drag gesture; it must now respond to a real drag.
+    final player = await pumpPlayer(tester);
+    await tester.tap(find.byType(AudioMiniPlayer));
+    await tester.pumpAndSettle();
+
+    final before = player.volume;
+    await tester.drag(find.byType(Slider), const Offset(80, 0));
+    await tester.pumpAndSettle();
+
+    // Only responsiveness is asserted, not direction: the regression this locks
+    // is the drag gesture being swallowed at all, which happens regardless of
+    // which way the value moves.
+    expect(player.volume, isNot(closeTo(before, 1e-6)));
   });
 }

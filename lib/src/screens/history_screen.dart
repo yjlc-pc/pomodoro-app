@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../format/date_formats.dart';
 import '../models/focus_stats_store.dart';
-import 'main_shell.dart' show kCompactBreakpoint;
+import '../layout/breakpoints.dart';
 
 /// 历史记录页面：展示每日/每周/每月的专注汇总。
 /// 完全遵循 M3 规范：颜色来自 ColorScheme，排版使用 textTheme 角色。

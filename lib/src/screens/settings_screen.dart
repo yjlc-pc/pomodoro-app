@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../settings/settings_controller.dart';
-import 'main_shell.dart' show kCompactBreakpoint;
+import '../layout/breakpoints.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});

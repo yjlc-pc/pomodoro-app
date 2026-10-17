@@ -1,19 +1,11 @@
 import 'package:flutter/material.dart';
+import '../layout/breakpoints.dart';
 import '../widgets/active_timer_capsule.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import 'timer_screen.dart';
 import 'todo_screen.dart';
-
-/// M3 window-class boundary: below is Compact, at/above is Medium.
-/// Screens switch their content layout (margins 16 → 24, single → multi-pane)
-/// at this width.
-const double kCompactBreakpoint = 600;
-
-/// Navigation switch: below is a bottom [NavigationBar], at/above is a labeled
-/// left [NavigationRail] (Expanded desktop class).
-const double kExpandedBreakpoint = 840;
 
 /// Hosts the three destinations (timer / todo / stats) behind an
 /// [IndexedStack] so switching pages never interrupts the running timer.

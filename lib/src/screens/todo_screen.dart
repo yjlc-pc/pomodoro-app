@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/todo_store.dart';
 import '../widgets/todo_panel.dart';
-import 'main_shell.dart' show kCompactBreakpoint;
+import '../layout/breakpoints.dart';
 
 class TodoScreen extends StatelessWidget {
   const TodoScreen({super.key});

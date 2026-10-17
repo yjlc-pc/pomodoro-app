@@ -6,7 +6,7 @@ import '../widgets/audio_control_bar.dart';
 import '../widgets/start_todo_sheet.dart';
 import '../widgets/timer_ring.dart';
 import '../widgets/todo_panel.dart';
-import 'main_shell.dart' show kCompactBreakpoint, kExpandedBreakpoint;
+import '../layout/breakpoints.dart';
 
 /// Semantic color role for a phase, so the ring, the main action and the
 /// session dots all speak the same language: focus is the brand red, breaks are
