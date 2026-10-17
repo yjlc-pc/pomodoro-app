@@ -62,6 +62,83 @@ class TodoStore extends ChangeNotifier {
     _persist();
   }
 
+  /// Rewrites the editable fields of a todo. Blank [title] is ignored so an
+  /// empty text field can never wipe a todo's name.
+  void update(
+    String id, {
+    String? title,
+    TodoPriority? priority,
+    String? description,
+  }) {
+    final index = _items.indexWhere((e) => e.id == id);
+    if (index == -1) return;
+    final trimmed = title?.trim();
+    _items[index] = _items[index].copyWith(
+      title: (trimmed?.isNotEmpty ?? false) ? trimmed : null,
+      priority: priority,
+      description: description,
+    );
+    notifyListeners();
+    _persist();
+  }
+
+  /// Appends a sub-step to the todo. Blank titles are ignored.
+  void addSubtask(String todoId, String title) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) return;
+    final index = _items.indexWhere((e) => e.id == todoId);
+    if (index == -1) return;
+    final sub = SubTask(id: _newSubtaskId(), title: trimmed);
+    _items[index] = _items[index]
+        .copyWith(subtasks: [..._items[index].subtasks, sub]);
+    notifyListeners();
+    _persist();
+  }
+
+  void toggleSubtask(String todoId, String subtaskId) {
+    _mapSubtask(todoId, subtaskId, (s) => s.copyWith(done: !s.done));
+  }
+
+  void removeSubtask(String todoId, String subtaskId) {
+    final index = _items.indexWhere((e) => e.id == todoId);
+    if (index == -1) return;
+    final next = _items[index].subtasks
+        .where((s) => s.id != subtaskId)
+        .toList(growable: false);
+    if (next.length == _items[index].subtasks.length) return;
+    _items[index] = _items[index].copyWith(subtasks: next);
+    notifyListeners();
+    _persist();
+  }
+
+  /// Replaces one sub-step in place, keeping its position. No-op when the todo
+  /// or the sub-step does not exist.
+  void _mapSubtask(
+    String todoId,
+    String subtaskId,
+    SubTask Function(SubTask) transform,
+  ) {
+    final index = _items.indexWhere((e) => e.id == todoId);
+    if (index == -1) return;
+    final next = <SubTask>[];
+    var changed = false;
+    for (final sub in _items[index].subtasks) {
+      if (sub.id == subtaskId) {
+        next.add(transform(sub));
+        changed = true;
+      } else {
+        next.add(sub);
+      }
+    }
+    if (!changed) return;
+    _items[index] = _items[index].copyWith(subtasks: next);
+    notifyListeners();
+    _persist();
+  }
+
+  String _newSubtaskId() =>
+      '${DateTime.now().microsecondsSinceEpoch}-${_idCounter++}';
+
   /// Replaces the current list with the persisted snapshot. Tolerates
   /// corrupted data by falling back to an empty list.
   Future<void> load(SharedPreferences prefs) async {
