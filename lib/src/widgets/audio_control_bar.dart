@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../audio/ambient_player.dart';
-import '../settings/settings_store.dart';
 
 /// A play/pause toggle + current track label, rendered as a compact capsule
 /// that fits in an [AppBar.action]. Tapping the capsule opens a popup menu
@@ -151,37 +149,16 @@ class AudioPanelOverlay extends StatelessWidget {
     context.read<AmbientPlayer>().toggle();
   }
 
-  Future<void> _selectTrack(BuildContext context, AmbientTrack track) async {
-    final player = context.read<AmbientPlayer>();
-    final prefs = context.read<SharedPreferences>();
-    final store = context.read<SettingsStore>();
-    await player.playTrack(track);
-    await store.saveAudioPrefs(
-      prefs,
-      AudioPrefs(track: track, volume: player.volume, enabled: true),
-    );
+  Future<void> _selectTrack(BuildContext context, AmbientTrack track) {
+    return context.read<AmbientPlayer>().playTrack(track);
   }
 
-  Future<void> _stop(BuildContext context) async {
-    final player = context.read<AmbientPlayer>();
-    final prefs = context.read<SharedPreferences>();
-    final store = context.read<SettingsStore>();
-    await player.stop();
-    await store.saveAudioPrefs(
-      prefs,
-      AudioPrefs(volume: player.volume, enabled: false),
-    );
+  Future<void> _stop(BuildContext context) {
+    return context.read<AmbientPlayer>().stop();
   }
 
-  Future<void> _setVolume(BuildContext context, double v) async {
-    final player = context.read<AmbientPlayer>();
-    final prefs = context.read<SharedPreferences>();
-    final store = context.read<SettingsStore>();
-    await player.setVolume(v);
-    await store.saveAudioPrefs(
-      prefs,
-      AudioPrefs(track: player.track, volume: v, enabled: player.playing),
-    );
+  Future<void> _setVolume(BuildContext context, double v) {
+    return context.read<AmbientPlayer>().setVolume(v);
   }
 }
 

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../settings/settings_store.dart';
-import '../timer/pomodoro_timer.dart';
+import '../settings/settings_controller.dart';
 import 'main_shell.dart' show kCompactBreakpoint;
 
 class SettingsScreen extends StatelessWidget {
@@ -140,35 +138,33 @@ class _DurationSettingState extends State<_DurationSetting> {
   @override
   void initState() {
     super.initState();
-    final timer = context.read<PomodoroTimer>();
+    final settings = context.read<SettingsController>().settings;
     switch (widget.valueKey) {
       case 'focus':
-        _value = timer.settings.focusMinutes;
+        _value = settings.focusMinutes;
       case 'shortBreak':
-        _value = timer.settings.shortBreakMinutes;
+        _value = settings.shortBreakMinutes;
       case 'longBreak':
-        _value = timer.settings.longBreakMinutes;
+        _value = settings.longBreakMinutes;
       case 'sessions':
-        _value = timer.settings.sessionsBeforeLongBreak;
+        _value = settings.sessionsBeforeLongBreak;
       default:
         _value = widget.min;
     }
   }
 
-  /// Applies and persists the change in place — the settings screen stays
-  /// open so the user can keep adjusting.
+  /// Publishes the slider value to the shared settings, which persists it and
+  /// forwards it to the running timer. The page stays open so the user can
+  /// keep adjusting.
   void _save() {
-    final timer = context.read<PomodoroTimer>();
-    final store = context.read<SettingsStore>();
-    final prefs = context.read<SharedPreferences>();
-    final settings = timer.settings.copyWith(
-      focusMinutes: widget.valueKey == 'focus' ? _value : timer.settings.focusMinutes,
-      shortBreakMinutes: widget.valueKey == 'shortBreak' ? _value : timer.settings.shortBreakMinutes,
-      longBreakMinutes: widget.valueKey == 'longBreak' ? _value : timer.settings.longBreakMinutes,
-      sessionsBeforeLongBreak: widget.valueKey == 'sessions' ? _value : timer.settings.sessionsBeforeLongBreak,
-    );
-    timer.applySettings(settings);
-    store.save(prefs, settings);
+    final controller = context.read<SettingsController>();
+    final s = controller.settings;
+    controller.update(s.copyWith(
+      focusMinutes: widget.valueKey == 'focus' ? _value : s.focusMinutes,
+      shortBreakMinutes: widget.valueKey == 'shortBreak' ? _value : s.shortBreakMinutes,
+      longBreakMinutes: widget.valueKey == 'longBreak' ? _value : s.longBreakMinutes,
+      sessionsBeforeLongBreak: widget.valueKey == 'sessions' ? _value : s.sessionsBeforeLongBreak,
+    ));
   }
 
   @override
@@ -223,30 +219,29 @@ class _SwitchSettingState extends State<_SwitchSetting> {
   @override
   void initState() {
     super.initState();
-    final timer = context.read<PomodoroTimer>();
+    final settings = context.read<SettingsController>().settings;
     switch (widget.valueKey) {
       case 'autoBreaks':
-        _value = timer.settings.autoStartBreaks;
+        _value = settings.autoStartBreaks;
       case 'autoFocus':
-        _value = timer.settings.autoStartFocus;
+        _value = settings.autoStartFocus;
       case 'sound':
-        _value = timer.settings.soundEnabled;
+        _value = settings.soundEnabled;
       default:
         _value = false;
     }
   }
 
+  /// Publishes the toggle to the shared settings, which persists it. The
+  /// timer re-reads its own copy through the controller listener.
   void _save() {
-    final timer = context.read<PomodoroTimer>();
-    final store = context.read<SettingsStore>();
-    final prefs = context.read<SharedPreferences>();
-    final settings = timer.settings.copyWith(
-      autoStartBreaks: widget.valueKey == 'autoBreaks' ? _value : timer.settings.autoStartBreaks,
-      autoStartFocus: widget.valueKey == 'autoFocus' ? _value : timer.settings.autoStartFocus,
-      soundEnabled: widget.valueKey == 'sound' ? _value : timer.settings.soundEnabled,
-    );
-    timer.applySettings(settings);
-    store.save(prefs, settings);
+    final controller = context.read<SettingsController>();
+    final s = controller.settings;
+    controller.update(s.copyWith(
+      autoStartBreaks: widget.valueKey == 'autoBreaks' ? _value : s.autoStartBreaks,
+      autoStartFocus: widget.valueKey == 'autoFocus' ? _value : s.autoStartFocus,
+      soundEnabled: widget.valueKey == 'sound' ? _value : s.soundEnabled,
+    ));
   }
 
   @override

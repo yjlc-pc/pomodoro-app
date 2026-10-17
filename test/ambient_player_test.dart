@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomodoro_app/src/audio/ambient_player.dart';
-import 'package:pomodoro_app/src/settings/settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Records engine calls for asserting state-machine behaviour without a real
@@ -13,6 +12,8 @@ class FakeAmbientEngine implements AmbientEngine {
   bool stopCalls = false;
   double? lastVolume;
   bool throwOnLoad = false;
+  bool throwOnChime = false;
+  int chimeCalls = 0;
 
   @override
   Future<void> init() async {
@@ -39,6 +40,12 @@ class FakeAmbientEngine implements AmbientEngine {
   Future<void> stop() async {
     stopCalls = true;
     loadedTrack = null;
+  }
+
+  @override
+  Future<void> playChime() async {
+    chimeCalls++;
+    if (throwOnChime) throw Exception('chime failed');
   }
 
   @override
@@ -138,48 +145,111 @@ void main() {
     });
   });
 
-  group('SettingsStore audio prefs', () {
-    test('loadAudioPrefs defaults to disabled, 0.7 volume, no track',
+  group('restore', () {
+    test('defaults to 0.7 volume and no playback when nothing is stored',
         () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final prefs2 = SettingsStore().loadAudioPrefs(prefs);
-      expect(prefs2.enabled, isFalse);
-      expect(prefs2.volume, 0.7);
-      expect(prefs2.track, isNull);
+      final engine = FakeAmbientEngine();
+      final player = AmbientPlayer(engine: engine);
+      await player.init();
+
+      await player.restore(prefs);
+
+      expect(player.track, isNull);
+      expect(player.volume, 0.7);
+      expect(engine.playCalls, isFalse);
     });
 
-    test('save/load round-trip persists track, volume and enabled', () async {
+    test('round-trip persists track and volume through the mutators',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore();
-      await store.saveAudioPrefs(
-        prefs,
-        const AudioPrefs(
-          track: AmbientTrack.rain,
-          volume: 0.45,
-          enabled: true,
-        ),
-      );
+      final engine = FakeAmbientEngine();
+      final first = AmbientPlayer(engine: engine);
+      await first.init();
+      await first.restore(prefs);
+      await first.playTrack(AmbientTrack.rain);
+      await first.setVolume(0.45);
 
-      final loaded = store.loadAudioPrefs(prefs);
-      expect(loaded.track, AmbientTrack.rain);
-      expect(loaded.volume, 0.45);
-      expect(loaded.enabled, isTrue);
+      final second = AmbientPlayer(engine: FakeAmbientEngine());
+      await second.init();
+      await second.restore(prefs);
+
+      expect(second.track, AmbientTrack.rain);
+      expect(second.volume, 0.45);
+      // The previous run exited while playing, so playback resumes.
+      expect(second.playing, isTrue);
     });
 
-    test('loadAudioPrefs tolerates unknown track names', () async {
+    test('does not resume after stop()', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final engine = FakeAmbientEngine();
+      final first = AmbientPlayer(engine: engine);
+      await first.init();
+      await first.restore(prefs);
+      await first.playTrack(AmbientTrack.rain);
+      await first.stop();
+
+      final second = AmbientPlayer(engine: FakeAmbientEngine());
+      await second.init();
+      await second.restore(prefs);
+
+      expect(second.track, isNull);
+      expect(second.playing, isFalse);
+    });
+
+    test('tolerates unknown track names', () async {
       SharedPreferences.setMockInitialValues(
           {'audio_track': 'does_not_exist', 'audio_volume': 0.9});
       final prefs = await SharedPreferences.getInstance();
-      final loaded = SettingsStore().loadAudioPrefs(prefs);
-      expect(loaded.track, isNull);
-      expect(loaded.volume, 0.9);
+      final player = AmbientPlayer(engine: FakeAmbientEngine());
+      await player.init();
+
+      await player.restore(prefs);
+
+      expect(player.track, isNull);
+      expect(player.volume, 0.9);
+    });
+  });
+
+  group('playChime', () {
+    test('forwards to the engine when available', () async {
+      final engine = FakeAmbientEngine();
+      final player = AmbientPlayer(engine: engine);
+      await player.init();
+
+      await player.playChime();
+
+      expect(engine.chimeCalls, 1);
+    });
+
+    test('is a no-op when the engine failed to initialize', () async {
+      final engine = _FailingInitEngine();
+      final player = AmbientPlayer(engine: engine);
+      await player.init();
+
+      await player.playChime();
+
+      expect(engine.chimeCalls, 0);
+    });
+
+    test('surfaces engine failures without throwing', () async {
+      final engine = FakeAmbientEngine()..throwOnChime = true;
+      final player = AmbientPlayer(engine: engine);
+      await player.init();
+
+      await player.playChime();
+
+      expect(player.lastError, contains('提示音'));
     });
   });
 }
 
 class _FailingInitEngine implements AmbientEngine {
+  int chimeCalls = 0;
+
   @override
   Future<void> init() async => throw Exception('no audio device');
 
@@ -197,6 +267,11 @@ class _FailingInitEngine implements AmbientEngine {
 
   @override
   Future<void> stop() async {}
+
+  @override
+  Future<void> playChime() async {
+    chimeCalls++;
+  }
 
   @override
   Future<void> dispose() async {}

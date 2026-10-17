@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pomodoro_app/src/screens/settings_screen.dart';
-import 'package:pomodoro_app/src/settings/settings_store.dart';
+import 'package:pomodoro_app/src/settings/settings_controller.dart';
 import 'package:pomodoro_app/src/timer/pomodoro_settings.dart';
 import 'package:pomodoro_app/src/timer/pomodoro_timer.dart';
 import 'package:pomodoro_app/src/theme/app_theme.dart';
@@ -18,11 +18,17 @@ void main() {
 
   Future<Widget> wrap(PomodoroTimer timer, SharedPreferences prefs) async {
     addTearDown(timer.dispose);
+    final settingsController = SettingsController();
+    addTearDown(settingsController.dispose);
+    await settingsController.load(prefs);
+    // Mirror main()'s wiring: the controller drives the timer, so the page has
+    // no direct handle on the timer at all.
+    settingsController
+        .addListener(() => timer.applySettings(settingsController.settings));
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: timer),
-        Provider<SettingsStore>.value(value: SettingsStore()),
-        Provider<SharedPreferences>.value(value: prefs),
+        ChangeNotifierProvider.value(value: settingsController),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),

@@ -9,7 +9,7 @@ import 'src/format/date_formats.dart';
 import 'src/models/focus_stats_store.dart';
 import 'src/models/todo_store.dart';
 import 'src/screens/main_shell.dart';
-import 'src/settings/settings_store.dart';
+import 'src/settings/settings_controller.dart';
 import 'src/theme/app_theme.dart';
 import 'src/timer/pomodoro_timer.dart';
 import 'src/widgets/window_title_bar.dart';
@@ -19,9 +19,14 @@ Future<void> main() async {
   await ensureDateFormatting();
   await _configureWindow();
   final prefs = await SharedPreferences.getInstance();
-  final store = SettingsStore();
-  final settings = await store.load(prefs);
-  final timer = PomodoroTimer(settings);
+  final settingsController = SettingsController();
+  await settingsController.load(prefs);
+  final timer = PomodoroTimer(settingsController.settings);
+  // The controller is the single source of truth; the timer follows it. Neither
+  // side holds a reference to the other beyond this listener.
+  settingsController.addListener(
+    () => timer.applySettings(settingsController.settings),
+  );
   final todoStore = TodoStore();
   await todoStore.load(prefs);
   final statsStore = FocusStatsStore();
@@ -32,15 +37,21 @@ Future<void> main() async {
   };
   final ambientPlayer = AmbientPlayer();
   await ambientPlayer.init();
-  await _restoreAmbientPlayback(ambientPlayer, store, prefs);
+  // Audio owns its own persisted state, so restoring is a single call with no
+  // snapshot reassembly at the call site.
+  await ambientPlayer.restore(prefs);
+  // Announce every phase transition — completed or skipped — so the chime the
+  // settings screen offers is really wired to the timer.
+  timer.onPhaseChanged = (_) {
+    if (settingsController.settings.soundEnabled) ambientPlayer.playChime();
+  };
 
   runApp(PomodoroApp(
     timer: timer,
-    settingsStore: store,
+    settingsController: settingsController,
     todoStore: todoStore,
     statsStore: statsStore,
     ambientPlayer: ambientPlayer,
-    prefs: prefs,
   ));
 }
 
@@ -66,36 +77,21 @@ Future<void> _configureWindow() async {
   }
 }
 
-/// Restores the persisted ambient playback state (track / volume / enabled).
-Future<void> _restoreAmbientPlayback(
-  AmbientPlayer player,
-  SettingsStore store,
-  SharedPreferences prefs,
-) async {
-  final audioPrefs = store.loadAudioPrefs(prefs);
-  await player.setVolume(audioPrefs.volume);
-  if (audioPrefs.enabled && audioPrefs.track != null) {
-    await player.playTrack(audioPrefs.track!);
-  }
-}
-
 class PomodoroApp extends StatelessWidget {
   const PomodoroApp({
     super.key,
     required this.timer,
-    required this.settingsStore,
+    required this.settingsController,
     required this.todoStore,
     required this.statsStore,
     required this.ambientPlayer,
-    required this.prefs,
   });
 
   final PomodoroTimer timer;
-  final SettingsStore settingsStore;
+  final SettingsController settingsController;
   final TodoStore todoStore;
   final FocusStatsStore statsStore;
   final AmbientPlayer ambientPlayer;
-  final SharedPreferences prefs;
 
   @override
   Widget build(BuildContext context) {
@@ -105,8 +101,7 @@ class PomodoroApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: todoStore),
         ChangeNotifierProvider.value(value: statsStore),
         ChangeNotifierProvider.value(value: ambientPlayer),
-        Provider<SettingsStore>.value(value: settingsStore),
-        Provider<SharedPreferences>.value(value: prefs),
+        ChangeNotifierProvider.value(value: settingsController),
       ],
       child: MaterialApp(
         title: '番茄钟',

@@ -214,6 +214,112 @@ void main() {
     });
   });
 
+  group('onPhaseChanged', () {
+    test('fires with the new phase on natural completion', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      final phases = <PomodoroPhase>[];
+      t.onPhaseChanged = phases.add;
+      t.start();
+      now = now.add(const Duration(minutes: 25));
+      t.tick();
+      expect(phases, [PomodoroPhase.shortBreak]);
+    });
+
+    test('fires with longBreak on the last focus of the cycle', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      final phases = <PomodoroPhase>[];
+      t.onPhaseChanged = phases.add;
+      // Three full cycles: a focus plus the short break that follows it. The
+      // fourth focus is the one that earns the long break.
+      for (var i = 0; i < baseSettings.sessionsBeforeLongBreak - 1; i++) {
+        t.start();
+        now = now.add(const Duration(minutes: 25));
+        t.tick(); // focus -> shortBreak
+        t.start();
+        now = now.add(const Duration(minutes: 5));
+        t.tick(); // shortBreak -> focus
+      }
+      t.start();
+      now = now.add(const Duration(minutes: 25));
+      t.tick();
+
+      expect(phases.last, PomodoroPhase.longBreak);
+      // Exactly one long break across the whole cycle, and it is the last
+      // transition — the earlier three focuses only earn short breaks.
+      expect(phases.where((p) => p == PomodoroPhase.longBreak), hasLength(1));
+      expect(phases.where((p) => p == PomodoroPhase.shortBreak), hasLength(3));
+    });
+
+    test('fires when the phase is skipped', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      final phases = <PomodoroPhase>[];
+      t.onPhaseChanged = phases.add;
+      t.skip();
+      expect(phases, [PomodoroPhase.shortBreak]);
+    });
+
+    test('NOT invoked on reset', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      final phases = <PomodoroPhase>[];
+      t.onPhaseChanged = phases.add;
+      t.start();
+      t.reset();
+      expect(phases, isEmpty);
+    });
+
+    test('NOT invoked on pause', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      final phases = <PomodoroPhase>[];
+      t.onPhaseChanged = phases.add;
+      t.start();
+      t.pause();
+      expect(phases, isEmpty);
+    });
+
+    test('fires once per completion, including the auto-started continuation',
+        () {
+      final t = PomodoroTimer(
+        const PomodoroSettings(
+          focusMinutes: 25,
+          shortBreakMinutes: 5,
+          longBreakMinutes: 15,
+          sessionsBeforeLongBreak: 4,
+          // Both are needed: the focus must roll straight into its break, and
+          // the break must roll straight into the next focus.
+          autoStartBreaks: true,
+          autoStartFocus: true,
+        ),
+        clock: clock,
+      );
+      final phases = <PomodoroPhase>[];
+      t.onPhaseChanged = phases.add;
+      t.start();
+      now = now.add(const Duration(minutes: 25));
+      t.tick(); // focus -> shortBreak (auto-starts the break)
+      expect(phases, [PomodoroPhase.shortBreak]);
+      expect(t.running, isTrue);
+      now = now.add(const Duration(minutes: 5));
+      t.tick(); // shortBreak -> focus (auto-starts the next focus)
+      expect(phases, [PomodoroPhase.shortBreak, PomodoroPhase.focus]);
+    });
+
+    test('fires when a break completes, unlike onFocusCompleted', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      final phases = <PomodoroPhase>[];
+      var focusCompleted = false;
+      t.onPhaseChanged = phases.add;
+      t.onFocusCompleted = (_) => focusCompleted = true;
+      t.start();
+      now = now.add(const Duration(minutes: 25));
+      t.tick(); // focus -> shortBreak, stats recorded
+      t.start();
+      now = now.add(const Duration(minutes: 5));
+      t.tick(); // shortBreak -> focus, stats NOT recorded
+      expect(phases, [PomodoroPhase.shortBreak, PomodoroPhase.focus]);
+      expect(focusCompleted, isTrue);
+    });
+  });
+
   group('settings', () {
     test('applySettings updates durations without resetting a running timer',
         () {

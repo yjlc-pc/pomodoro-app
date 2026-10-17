@@ -56,6 +56,19 @@ class PomodoroTimer extends ChangeNotifier {
   /// full [Duration] of the completed focus so callers can persist it.
   void Function(Duration completedFocus)? onFocusCompleted;
 
+  /// Called every time the engine moves from one phase to another, receiving
+  /// the phase now in effect.
+  ///
+  /// Fires from natural completion *and* from [skip] (so the user gets the same
+  /// acknowledgement whether the phase ended or was cut short), but never from
+  /// [reset] or [pause], which do not change phase. Auto-start continuations
+  /// also fire, since they arrive via the same [_switchPhase] call.
+  ///
+  /// [onFocusCompleted] remains the seam for statistics: it fires only on
+  /// natural completion, which is the distinction callers that record or log
+  /// actually care about.
+  void Function(PomodoroPhase phase)? onPhaseChanged;
+
   /// The todo linked to the current focus session, if any. Display-only: it is
   /// never aggregated and is cleared when the focus ends.
   String? _linkedTodoId;
@@ -249,6 +262,7 @@ class PomodoroTimer extends ChangeNotifier {
     if (next == PomodoroPhase.focus) {
       _isLongBreakDue = false;
     }
+    onPhaseChanged?.call(next);
   }
 
   @override

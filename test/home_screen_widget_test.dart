@@ -173,5 +173,8 @@ class _StubAmbientEngine implements AmbientEngine {
   Future<void> stop() async {}
 
   @override
+  Future<void> playChime() async {}
+
+  @override
   Future<void> dispose() async {}
 }

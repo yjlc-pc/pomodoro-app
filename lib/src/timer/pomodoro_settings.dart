@@ -1,4 +1,8 @@
 /// Settings that control the Pomodoro timer behaviour.
+///
+/// Immutable value object: two instances with the same fields are equal, so
+/// callers (and `SettingsController`'s no-op check) can compare settings
+/// directly instead of comparing identity.
 class PomodoroSettings {
   const PomodoroSettings({
     this.focusMinutes = 25,
@@ -8,7 +12,6 @@ class PomodoroSettings {
     this.autoStartBreaks = false,
     this.autoStartFocus = false,
     this.soundEnabled = true,
-    this.alwaysOnScreen = false,
   });
 
   final int focusMinutes;
@@ -18,7 +21,6 @@ class PomodoroSettings {
   final bool autoStartBreaks;
   final bool autoStartFocus;
   final bool soundEnabled;
-  final bool alwaysOnScreen;
 
   PomodoroSettings copyWith({
     int? focusMinutes,
@@ -28,7 +30,6 @@ class PomodoroSettings {
     bool? autoStartBreaks,
     bool? autoStartFocus,
     bool? soundEnabled,
-    bool? alwaysOnScreen,
   }) {
     return PomodoroSettings(
       focusMinutes: focusMinutes ?? this.focusMinutes,
@@ -39,7 +40,29 @@ class PomodoroSettings {
       autoStartBreaks: autoStartBreaks ?? this.autoStartBreaks,
       autoStartFocus: autoStartFocus ?? this.autoStartFocus,
       soundEnabled: soundEnabled ?? this.soundEnabled,
-      alwaysOnScreen: alwaysOnScreen ?? this.alwaysOnScreen,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PomodoroSettings &&
+          other.focusMinutes == focusMinutes &&
+          other.shortBreakMinutes == shortBreakMinutes &&
+          other.longBreakMinutes == longBreakMinutes &&
+          other.sessionsBeforeLongBreak == sessionsBeforeLongBreak &&
+          other.autoStartBreaks == autoStartBreaks &&
+          other.autoStartFocus == autoStartFocus &&
+          other.soundEnabled == soundEnabled;
+
+  @override
+  int get hashCode => Object.hash(
+        focusMinutes,
+        shortBreakMinutes,
+        longBreakMinutes,
+        sessionsBeforeLongBreak,
+        autoStartBreaks,
+        autoStartFocus,
+        soundEnabled,
+      );
 }

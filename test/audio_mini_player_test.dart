@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pomodoro_app/src/audio/ambient_player.dart';
-import 'package:pomodoro_app/src/settings/settings_store.dart';
 import 'package:pomodoro_app/src/theme/app_theme.dart';
 import 'package:pomodoro_app/src/widgets/audio_control_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +26,9 @@ class _FakeEngine implements AmbientEngine {
   Future<void> stop() async {}
 
   @override
+  Future<void> playChime() async {}
+
+  @override
   Future<void> dispose() async {}
 }
 
@@ -44,7 +46,6 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: player),
           Provider<SharedPreferences>.value(value: prefs),
-          Provider<SettingsStore>.value(value: SettingsStore()),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
