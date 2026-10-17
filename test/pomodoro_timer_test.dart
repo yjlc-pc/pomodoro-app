@@ -320,6 +320,65 @@ void main() {
     });
   });
 
+  group('remainingFraction', () {
+    test('is 1.0 at the start', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      expect(t.remainingFraction, 1.0);
+    });
+
+    test('jumps back to full when a phase ends, since the next one begins',
+        () {
+      // A full ring is only ever seen for one frame at exhaustion: the tick
+      // that drains the phase also switches to the next one and refills it, so
+      // there is no observable moment at 0.0. That is deliberate — the ring
+      // resets with the phase rather than lingering empty.
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      t.start();
+      now = now.add(const Duration(minutes: 25));
+      t.tick();
+      expect(t.phase, PomodoroPhase.shortBreak);
+      expect(t.remainingFraction, 1.0);
+    });
+
+    test('is the complement of progress', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      t.start();
+      now = now.add(const Duration(minutes: 10));
+      t.tick();
+      expect(t.remainingFraction + t.progress, closeTo(1.0, 1e-9));
+    });
+
+    test('shrinks monotonically as time passes', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      t.start();
+      var previous = t.remainingFraction;
+      for (var i = 0; i < 5; i++) {
+        now = now.add(const Duration(minutes: 4));
+        t.tick();
+        expect(t.remainingFraction, lessThan(previous));
+        previous = t.remainingFraction;
+      }
+    });
+
+    test('resets to full when the phase resets', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      t.start();
+      now = now.add(const Duration(minutes: 10));
+      t.tick();
+      t.reset();
+      expect(t.remainingFraction, 1.0);
+    });
+
+    test('restarts at full when a break starts', () {
+      final t = PomodoroTimer(baseSettings, clock: clock);
+      t.start();
+      now = now.add(const Duration(minutes: 25));
+      t.tick();
+      expect(t.phase, PomodoroPhase.shortBreak);
+      expect(t.remainingFraction, 1.0);
+    });
+  });
+
   group('settings', () {
     test('applySettings updates durations without resetting a running timer',
         () {

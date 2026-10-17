@@ -96,10 +96,25 @@ class PomodoroTimer extends ChangeNotifier {
   Duration get remaining => Duration(milliseconds: _remaining);
 
   /// Fraction of the phase completed: 0.0 (start) → 1.0 (done).
+  ///
+  /// Kept for callers that want to report *elapsed* work. For rendering a
+  /// countdown prefer [remainingFraction], which is its complement and matches
+  /// what the timer displays.
   double get progress {
     final total = phaseDuration.inMilliseconds;
     if (total <= 0) return 1.0;
     return ((total - _remaining) / total).clamp(0.0, 1.0).toDouble();
+  }
+
+  /// Fraction of the phase still to go: 1.0 (just started) → 0.0 (done).
+  ///
+  /// This is what a countdown ring should draw. Using [progress] instead makes
+  /// the ring fill up as the number inside it counts down, so the two disagree
+  /// about direction; using this getter keeps them aligned.
+  double get remainingFraction {
+    final total = phaseDuration.inMilliseconds;
+    if (total <= 0) return 0.0;
+    return (_remaining / total).clamp(0.0, 1.0).toDouble();
   }
 
   /// Format remaining time as "MM:SS".

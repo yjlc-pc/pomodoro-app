@@ -8,6 +8,16 @@ import '../widgets/timer_ring.dart';
 import '../widgets/todo_panel.dart';
 import 'main_shell.dart' show kCompactBreakpoint, kExpandedBreakpoint;
 
+/// Semantic color role for a phase, so the ring, the main action and the
+/// session dots all speak the same language: focus is the brand red, breaks are
+/// the app's other two seeded accents. All three come from [ColorScheme] — no
+/// hand-picked hex — so they stay legible in both light and dark.
+Color _phaseColor(ColorScheme scheme, PomodoroPhase phase) => switch (phase) {
+      PomodoroPhase.focus => scheme.primary,
+      PomodoroPhase.shortBreak => scheme.tertiary,
+      PomodoroPhase.longBreak => scheme.secondary,
+    };
+
 class TimerScreen extends StatelessWidget {
   const TimerScreen({super.key, required this.onOpenSettings});
 
@@ -101,7 +111,11 @@ class TimerScreen extends StatelessWidget {
               ],
               TimerRing(
                 size: medium ? 320 : 260,
-                progress: timer.progress,
+                remainingFraction: timer.remainingFraction,
+                progressColor: _phaseColor(
+                  Theme.of(context).colorScheme,
+                  timer.phase,
+                ),
                 durationLabel: timer.formattedTime,
                 phaseLabel: timer.phase.title,
               ),
@@ -151,7 +165,11 @@ class TimerScreen extends StatelessWidget {
                     ],
                     TimerRing(
                       size: 320,
-                      progress: timer.progress,
+                      remainingFraction: timer.remainingFraction,
+                      progressColor: _phaseColor(
+                        Theme.of(context).colorScheme,
+                        timer.phase,
+                      ),
                       durationLabel: timer.formattedTime,
                       phaseLabel: timer.phase.title,
                     ),
