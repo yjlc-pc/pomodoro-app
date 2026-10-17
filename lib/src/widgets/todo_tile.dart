@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/todo_item.dart';
+import 'animated_check.dart';
 
 /// One todo row, plus its sub-steps when expanded.
 ///
@@ -218,7 +219,7 @@ class _ListTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-          Checkbox(value: item.done, onChanged: (_) => onToggle()),
+          AnimatedCheck(checked: item.done, onChanged: (_) => onToggle()),
           Expanded(
             child: InkWell(
               onTap: onOpenDetail,
@@ -290,10 +291,7 @@ class _CardTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              Checkbox(
-                value: item.done,
-                onChanged: (_) => onToggle(),
-              ),
+              AnimatedCheck(checked: item.done, onChanged: (_) => onToggle()),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -353,7 +351,7 @@ class _SubTaskRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Checkbox(value: subtask.done, onChanged: (_) => onToggle()),
+            AnimatedCheck(checked: subtask.done, onChanged: (_) => onToggle()),
             Expanded(
               child: Text(
                 subtask.title,

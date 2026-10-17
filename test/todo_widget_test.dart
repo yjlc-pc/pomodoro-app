@@ -7,6 +7,7 @@ import 'package:pomodoro_app/src/screens/todo_screen.dart';
 import 'package:pomodoro_app/src/timer/pomodoro_settings.dart';
 import 'package:pomodoro_app/src/timer/pomodoro_timer.dart';
 import 'package:pomodoro_app/src/theme/app_theme.dart';
+import 'package:pomodoro_app/src/widgets/animated_check.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -93,7 +94,7 @@ void main() {
     expect(find.text('任务B'), findsOneWidget);
 
     // Toggle the first (A) via its checkbox.
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.byType(AnimatedCheck).first);
     await tester.pumpAndSettle();
 
     expect(store.items.first.title, '任务B');
@@ -128,7 +129,7 @@ void main() {
     await setSurfaceSize(tester, 400);
     await tester.pumpWidget(await wrap(todoStore: store));
     await tester.pump();
-    expect(find.byType(Checkbox), findsWidgets);
+    expect(find.byType(AnimatedCheck), findsWidgets);
     expect(find.byType(Card), findsNothing);
 
     // Wide: multi-column grid. Both variants now use a Checkbox (the card used
@@ -136,7 +137,7 @@ void main() {
     await setSurfaceSize(tester, 1200);
     await tester.pumpWidget(await wrap(todoStore: store));
     await tester.pump();
-    expect(find.byType(Checkbox), findsWidgets);
+    expect(find.byType(AnimatedCheck), findsWidgets);
     expect(find.byType(Card), findsWidgets);
   });
 
