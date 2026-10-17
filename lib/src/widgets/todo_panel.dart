@@ -56,16 +56,11 @@ class TodoPanel extends StatelessWidget {
     if (wide) {
       return SliverPadding(
         padding: const EdgeInsets.all(24),
-        sliver: SliverGrid(
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 180,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            mainAxisExtent: 72,
-          ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => tileFor(items[index]),
-            childCount: items.length,
+        sliver: SliverToBoxAdapter(
+          child: Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [for (final item in items) tileFor(item)],
           ),
         ),
       );
