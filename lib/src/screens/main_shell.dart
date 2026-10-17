@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/active_timer_capsule.dart';
+import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import 'timer_screen.dart';
@@ -29,6 +30,7 @@ class _MainShellState extends State<MainShell> {
     TimerScreen(onOpenSettings: _openSettings),
     const TodoScreen(),
     const StatsScreen(),
+    const HistoryScreen(),
   ];
 
   static const _destinations = [
@@ -47,6 +49,11 @@ class _MainShellState extends State<MainShell> {
       selectedIcon: Icon(Icons.bar_chart),
       label: '统计',
     ),
+    NavigationDestination(
+      icon: Icon(Icons.history_outlined),
+      selectedIcon: Icon(Icons.history),
+      label: '历史',
+    ),
   ];
 
   static const _railDestinations = [
@@ -64,6 +71,11 @@ class _MainShellState extends State<MainShell> {
       icon: Icon(Icons.bar_chart_outlined),
       selectedIcon: Icon(Icons.bar_chart),
       label: Text('统计'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.history_outlined),
+      selectedIcon: Icon(Icons.history),
+      label: Text('历史'),
     ),
   ];
 
