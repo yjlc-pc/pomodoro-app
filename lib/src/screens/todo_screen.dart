@@ -46,7 +46,9 @@ class TodoScreen extends StatelessWidget {
                 ),
               );
             }
-            return CustomScrollView(slivers: [TodoPanel(wide: false)]);
+            return CustomScrollView(
+              slivers: const [TodoPanel(wide: false, collapseDone: true)],
+            );
           },
         ),
       ),

@@ -138,6 +138,90 @@ void main() {
     expect(find.byType(Checkbox), findsNothing);
     expect(find.byType(Card), findsWidgets);
   });
+
+  group('collapsing completed todos', () {
+    Future<TodoStore> storeWithOneDone() async {
+      final store = TodoStore();
+      store.add('未完成的事');
+      store.add('已经做完的事');
+      store.toggle(store.items[1].id);
+      return store;
+    }
+
+    testWidgets('hides done entries behind a header on narrow screens',
+        (tester) async {
+      final store = await storeWithOneDone();
+      await setSurfaceSize(tester, 400, 1200);
+      await tester.pumpWidget(await wrap(todoStore: store));
+      await tester.pump();
+
+      expect(find.text('未完成的事'), findsOneWidget);
+      expect(find.text('已经做完的事'), findsNothing);
+      expect(find.text('已完成 1 项'), findsOneWidget);
+    });
+
+    testWidgets('expands and collapses when the header is tapped',
+        (tester) async {
+      final store = await storeWithOneDone();
+      await setSurfaceSize(tester, 400, 1200);
+      await tester.pumpWidget(await wrap(todoStore: store));
+      await tester.pump();
+
+      await tester.tap(find.text('已完成 1 项'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('已经做完的事'), findsOneWidget);
+      expect(find.text('收起已完成'), findsOneWidget);
+
+      await tester.tap(find.text('收起已完成'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('已经做完的事'), findsNothing);
+    });
+
+    testWidgets('shows no header when nothing is completed', (tester) async {
+      final store = TodoStore();
+      store.add('未完成的事');
+      await setSurfaceSize(tester, 400, 1200);
+      await tester.pumpWidget(await wrap(todoStore: store));
+      await tester.pump();
+
+      expect(find.textContaining('已完成'), findsNothing);
+      expect(find.text('未完成的事'), findsOneWidget);
+    });
+
+    testWidgets('stays collapsed on the wide grid layout', (tester) async {
+      // A card grid has no "below the fold" to hide behind, and the wide layout
+      // is not given collapseDone at all.
+      final store = await storeWithOneDone();
+      await setSurfaceSize(tester, 1200, 1200);
+      await tester.pumpWidget(await wrap(todoStore: store));
+      await tester.pump();
+
+      expect(find.text('已经做完的事'), findsOneWidget);
+      expect(find.text('已完成 1 项'), findsNothing);
+    });
+
+    testWidgets('collapses again after a rebuild', (tester) async {
+      final store = await storeWithOneDone();
+      await setSurfaceSize(tester, 400, 1200);
+      await tester.pumpWidget(await wrap(todoStore: store));
+      await tester.pump();
+      await tester.tap(find.text('已完成 1 项'));
+      await tester.pumpAndSettle();
+      expect(find.text('已经做完的事'), findsOneWidget);
+
+      // The expansion is intentionally not persisted. Pumping an identical tree
+      // would reuse the existing State, so unmount first — that is what a
+      // restart actually looks like to the widget.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(await wrap(todoStore: store));
+      await tester.pumpAndSettle();
+      expect(find.text('已经做完的事'), findsNothing);
+      expect(find.text('已完成 1 项'), findsOneWidget);
+    });
+  });
 }
 
 /// Silent engine stub so todo tests don't need an audio device.
