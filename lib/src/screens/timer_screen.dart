@@ -99,43 +99,50 @@ class TimerScreen extends StatelessWidget {
       padding: medium
           ? const EdgeInsets.all(24)
           : const EdgeInsets.fromLTRB(16, 24, 16, 32),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (linkedTitle != null) ...[
-                _LinkedTodoBanner(title: linkedTitle),
-                const SizedBox(height: 24),
-              ],
-              TimerRing(
-                size: medium ? 320 : 260,
-                remainingFraction: timer.remainingFraction,
-                progressColor: _phaseColor(
-                  Theme.of(context).colorScheme,
-                  timer.phase,
-                ),
-                durationLabel: timer.formattedTime,
-                phaseLabel: timer.phase.title,
+      // A Center inside a vertical scroll view does nothing, so the column is
+      // constrained directly; on a tall narrow screen a fixed-size ring would
+      // strand a lot of empty space, so it scales with the viewport height too.
+      child: Builder(
+        builder: (context) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (linkedTitle != null) ...[
+                    _LinkedTodoBanner(title: linkedTitle),
+                    const SizedBox(height: 24),
+                  ],
+                  TimerRing(
+                    size: medium ? 320 : 260,
+                    remainingFraction: timer.remainingFraction,
+                    progressColor: _phaseColor(
+                      Theme.of(context).colorScheme,
+                      timer.phase,
+                    ),
+                    durationLabel: timer.formattedTime,
+                    phaseLabel: timer.phase.title,
+                  ),
+                  const SizedBox(height: 32),
+                  _SessionDots(
+                    completed: timer.completedFocusSessions,
+                    total: timer.settings.sessionsBeforeLongBreak,
+                  ),
+                  const SizedBox(height: 32),
+                  _Controls(
+                    timer: timer,
+                    onStart: () => _handleStartPressed(context),
+                  ),
+                  if (timer.phase != PomodoroPhase.focus) ...[
+                    const SizedBox(height: 24),
+                    const AudioControlBar(),
+                  ],
+                ],
               ),
-              const SizedBox(height: 32),
-              _SessionDots(
-                completed: timer.completedFocusSessions,
-                total: timer.settings.sessionsBeforeLongBreak,
-              ),
-              const SizedBox(height: 32),
-              _Controls(
-                timer: timer,
-                onStart: () => _handleStartPressed(context),
-              ),
-              if (timer.phase != PomodoroPhase.focus) ...[
-                const SizedBox(height: 24),
-                const AudioControlBar(),
-              ],
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -147,15 +154,21 @@ class TimerScreen extends StatelessWidget {
     String? linkedTitle,
   ) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
           flex: 3,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
+            // mainAxisSize.min + Center lets the hero sit optically centred in
+            // whatever height is left, instead of hugging the top of a tall
+            // window.
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
+                // Wide enough for the ring plus breathing room, but still capped:
+                // past this the countdown reads as an oversized poster rather
+                // than the focus of the window.
+                constraints: const BoxConstraints(maxWidth: 520),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -163,15 +176,17 @@ class TimerScreen extends StatelessWidget {
                       _LinkedTodoBanner(title: linkedTitle),
                       const SizedBox(height: 24),
                     ],
-                    TimerRing(
-                      size: 320,
-                      remainingFraction: timer.remainingFraction,
-                      progressColor: _phaseColor(
-                        Theme.of(context).colorScheme,
-                        timer.phase,
+                    LayoutBuilder(
+                      builder: (context, inner) => TimerRing(
+                        size: _ringSize(inner.maxHeight, inner.maxWidth),
+                        remainingFraction: timer.remainingFraction,
+                        progressColor: _phaseColor(
+                          Theme.of(context).colorScheme,
+                          timer.phase,
+                        ),
+                        durationLabel: timer.formattedTime,
+                        phaseLabel: timer.phase.title,
                       ),
-                      durationLabel: timer.formattedTime,
-                      phaseLabel: timer.phase.title,
                     ),
                     const SizedBox(height: 32),
                     _SessionDots(
@@ -194,11 +209,27 @@ class TimerScreen extends StatelessWidget {
           ),
         ),
         Expanded(
+          // The todo list is a scrollable list of text rows; it needs the extra
+          // width far more than the ring does.
           flex: 2,
           child: _TodoSidebar(),
         ),
       ],
     );
+  }
+
+  /// Picks a ring diameter that fills the available box without crowding it.
+  ///
+  /// The ring is a square, so both axes cap it; [kMaxRingSize] keeps it from
+  /// ballooning on a large monitor, and the floor keeps it legible on a short
+  /// window.
+  static const double kMaxRingSize = 400;
+  static const double kMinRingSize = 200;
+
+  static double _ringSize(double availableHeight, double availableWidth) {
+    final byHeight = availableHeight - 200; // dots + controls below the ring
+    final size = byHeight < availableWidth ? byHeight : availableWidth;
+    return size.clamp(kMinRingSize, kMaxRingSize);
   }
 }
 

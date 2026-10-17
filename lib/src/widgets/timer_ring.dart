@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -9,7 +10,7 @@ import 'package:flutter/material.dart';
 /// in the middle counts **down**: a ring that fills up while its number shrinks
 /// makes the two read as contradicting each other. Callers pass
 /// [PomodoroTimer.remainingFraction] so the ring and the digits always agree.
-class TimerRing extends StatelessWidget {
+class TimerRing extends StatefulWidget {
   const TimerRing({
     super.key,
     required this.remainingFraction,
@@ -40,21 +41,91 @@ class TimerRing extends StatelessWidget {
   final Color? strokeColor;
 
   @override
+  State<TimerRing> createState() => _TimerRingState();
+}
+
+class _TimerRingState extends State<TimerRing> {
+  /// What the ring actually paints, which is not always
+  /// [TimerRing.remainingFraction] — see [_drainHoldRefill].
+  double _target = 1.0;
+  bool _holding = false;
+  Timer? _holdTimer;
+
+  /// How long the emptied ring lingers before refilling. Long enough to read as
+  /// a beat rather than a frame, short enough not to delay the next phase.
+  static const Duration _holdDuration = Duration(milliseconds: 420);
+
+  /// Smallest upward jump in [remainingFraction] that counts as "a fresh
+  /// session started" rather than ordinary ticking.
+  ///
+  /// While a timer runs, this value falls by well under one thousandth per
+  /// second (1/1500 for a 25-minute focus), so anything above this threshold is
+  /// a phase change or a reset — both of which get the same beat.
+  static const double _refillThreshold = 0.1;
+
+  @override
+  void initState() {
+    super.initState();
+    _target = widget.remainingFraction;
+  }
+
+  @override
+  void didUpdateWidget(TimerRing oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_holding) return;
+    final jump = widget.remainingFraction - oldWidget.remainingFraction;
+    if (jump > _refillThreshold) _drainHoldRefill();
+  }
+
+  /// Empties the ring, holds it empty for a beat, then refills for the new
+  /// phase.
+  ///
+  /// Whenever the timer starts over — a phase ending naturally, a skip, or a
+  /// reset — [remainingFraction] snaps back to 1.0. Treated as a plain tween
+  /// that reads as the ring springing back to full the instant it lands, with
+  /// nowhere for the moment to rest. Draining first gives the end of a session
+  /// a visible landing, and keeps one consistent gesture for all three ways of
+  /// starting over.
+  void _drainHoldRefill() {
+    setState(() {
+      _holding = true;
+      _target = 0;
+    });
+    // A cancellable Timer, not Future.delayed: the hold outlives a test's widget
+    // tree or a page switch, and an orphan future would fire into a disposed
+    // State (and trip flutter_test's pending-timer assertion).
+    _holdTimer?.cancel();
+    _holdTimer = Timer(_holdDuration, () {
+      if (!mounted) return;
+      setState(() {
+        _holding = false;
+        _target = widget.remainingFraction;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final strokeWidth = size * 0.045;
+    final strokeWidth = widget.size * 0.045;
     return SizedBox(
-      width: size,
-      height: size,
+      width: widget.size,
+      height: widget.size,
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: remainingFraction.clamp(0.0, 1.0)),
-        duration: const Duration(milliseconds: 200),
+        tween: Tween<double>(end: _target.clamp(0.0, 1.0)),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
         builder: (context, value, _) => CustomPaint(
           painter: _RingPainter(
             remaining: value,
-            trackColor: strokeColor ?? scheme.surfaceContainerHighest,
-            progressColor: progressColor,
+            trackColor: widget.strokeColor ?? scheme.surfaceContainerHighest,
+            progressColor: widget.progressColor,
             strokeWidth: strokeWidth,
           ),
           child: Center(
@@ -62,7 +133,7 @@ class TimerRing extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  durationLabel,
+                  widget.durationLabel,
                   // displayLarge + w600: this is the app's focal point and the
                   // M3 display roles are all regular weight. tabular figures
                   // come from the theme, so the digits never shift sideways as
@@ -74,7 +145,7 @@ class TimerRing extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  phaseLabel,
+                  widget.phaseLabel,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
