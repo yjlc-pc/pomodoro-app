@@ -78,6 +78,15 @@ class FocusStatsStore extends ChangeNotifier {
       _cachedDailyStats ??= (_buckets.values.toList()
         ..sort((a, b) => a.date.compareTo(b.date)));
 
+  /// "Today" according to this store's clock, at local midnight.
+  ///
+  /// Every derived figure ([currentStreak], [weekSummary], [monthSummary]) is
+  /// computed against this, so callers must read it rather than calling
+  /// [DateTime.now] directly — otherwise a chart and the summary next to it can
+  /// disagree about which days count as "this week". Tests drive the store with
+  /// an injected clock, which is exactly where the two would diverge.
+  DateTime get today => _dayOf(_clock());
+
   /// Direct O(1) lookup for a specific day's stat, or null if no focus
   /// was completed on that day.
   DailyStat? statForDate(DateTime date) => _buckets[_dayOf(date)];

@@ -46,8 +46,8 @@ class StatsScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
             child: FocusChart(
-              values: _last7DaysMinutes(store, DateTime.now()),
-              labels: _last7DaysLabels(DateTime.now()),
+              values: _last7DaysMinutes(store, store.today),
+              labels: _last7DaysLabels(store.today),
             ),
           ),
         ),
@@ -73,8 +73,8 @@ class StatsScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
                 child: FocusChart(
-                  values: _last7DaysMinutes(store, DateTime.now()),
-                  labels: _last7DaysLabels(DateTime.now()),
+                  values: _last7DaysMinutes(store, store.today),
+                  labels: _last7DaysLabels(store.today),
                 ),
               ),
             ),
@@ -108,29 +108,55 @@ class _StreakHeader extends StatelessWidget {
 
   final FocusStatsStore store;
 
+  /// Diameter of the flame. Large enough to be the page's focal point — the
+  /// streak is the reason to open this screen, so it should not be a line of
+  /// body text.
+  static const double _flameSize = 96;
+
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final day = DateTime(today.year, today.month, today.day);
-    final todayStat = store.statForDate(day);
+    final todayStat = store.statForDate(store.today);
     final todayCount = todayStat?.pomodoroCount ?? 0;
     final todayMinutes = todayStat?.focusMinutes ?? 0;
-    final onSurfaceVariant = Theme.of(context).colorScheme.onSurfaceVariant;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final streak = store.currentStreak;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    // A broken streak is de-emphasised rather than hidden: the number still has
+    // to stay legible, it just should not shout while it reads zero.
+    final accent = streak > 0 ? scheme.primary : scheme.onSurfaceVariant;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          '🔥 连续 ${store.currentStreak} 天',
-          style: Theme.of(context).textTheme.headlineMedium,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$streak',
+                style: theme.textTheme.displayLarge?.copyWith(color: accent),
+              ),
+              Text(
+                '天连胜',
+                style: theme.textTheme.titleMedium?.copyWith(color: accent),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '今天 $todayCount 个番茄 · $todayMinutes 分钟',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          '今天 $todayCount 个番茄 · $todayMinutes 分钟',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: onSurfaceVariant),
+        const SizedBox(width: 16),
+        Icon(
+          Icons.local_fire_department,
+          size: _flameSize,
+          color: accent,
         ),
       ],
     );

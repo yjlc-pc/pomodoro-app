@@ -10,6 +10,19 @@ class StatsSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final week = store.weekSummary();
+    final month = store.monthSummary();
+
+    // Two cards reading "0 番茄 · 0 分钟" side by side is worse than no cards:
+    // it looks like a report about nothing. With no activity in either period
+    /// there is nothing to compare, so render nothing.
+    if (week.pomodoroCount == 0 &&
+        week.focusMinutes == 0 &&
+        month.pomodoroCount == 0 &&
+        month.focusMinutes == 0) {
+      return const SizedBox.shrink();
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -17,7 +30,7 @@ class StatsSummary extends StatelessWidget {
           child: _PeriodCard(
             title: '本周',
             previousLabel: _previousLabels['本周']!,
-            current: store.weekSummary(),
+            current: week,
             previous: store.previousWeekSummary(),
           ),
         ),
@@ -26,7 +39,7 @@ class StatsSummary extends StatelessWidget {
           child: _PeriodCard(
             title: '本月',
             previousLabel: _previousLabels['本月']!,
-            current: store.monthSummary(),
+            current: month,
             previous: store.previousMonthSummary(),
           ),
         ),

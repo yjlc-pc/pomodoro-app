@@ -13,7 +13,24 @@ class FocusChart extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     final maxValue = values.fold<int>(0, (m, v) => v > m ? v : m);
-    final top = (maxValue == 0 ? 1 : maxValue) * 1.2;
+    if (maxValue == 0) {
+      // An empty axis frame reads as "the chart is broken". Say what is
+      // actually true instead.
+      return SizedBox(
+        height: 180,
+        child: Center(
+          child: Text(
+            '本周还没有专注记录',
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+      );
+    }
+
+    final top = maxValue * 1.2;
 
     return SizedBox(
       height: 180,
