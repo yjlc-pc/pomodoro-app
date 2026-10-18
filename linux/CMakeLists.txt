@@ -16,6 +16,23 @@ cmake_policy(SET CMP0063 NEW)
 # Load bundled libraries from the lib/ directory relative to the binary.
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
+# Plugin shared libraries live next to each other in lib/, so they resolve their
+# siblings from their own directory.
+set(CMAKE_INSTALL_RPATH "$ORIGIN")
+
+# Without this, CMake's CMP0042 behaviour appends the directories of linked
+# libraries that live outside the install prefix. For plugins that means the
+# generator's `linux/flutter/ephemeral` tree, so the built .so files end up
+# carrying absolute *build-machine* paths in their RUNPATH. rpmbuild rejects
+# those as invalid runpaths, and on any other machine the bundle would fail to
+# load its plugins. Verified with readelf before/after.
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+
+# The bundle installs build-tree artifacts directly (`install(FILES ...)`), so
+# the RPATH baked into the build output is what actually ships. Build straight
+# with the install RPATH instead of the default absolute build-tree one.
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
 # Root filesystem for cross-building.
 if(FLUTTER_TARGET_PLATFORM_SYSROOT)
   set(CMAKE_SYSROOT ${FLUTTER_TARGET_PLATFORM_SYSROOT})
@@ -67,6 +84,12 @@ add_dependencies(${BINARY_NAME} flutter_assemble)
 set_target_properties(${BINARY_NAME}
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/intermediates_do_not_run"
+  # The executable itself needs the lib/ subdirectory: that is where its own
+  # dependencies (the plugin libraries and libflutter_linux_gtk.so) are
+  # installed. The global runpath above is $ORIGIN for the plugins, which sit
+  # beside their siblings; without this override `ldd` reports all three plugin
+  # libraries as "not found" and the bundle cannot start.
+  INSTALL_RPATH "$ORIGIN/lib"
 )
 
 
@@ -111,6 +134,21 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endforeach(bundled_library)
+
+# flutter_soloud vendors FLAC, Ogg, Opus and Vorbis and links against them under
+# their versioned sonames (libvorbis.so.0.4.9, libFLAC.so.14, ...). Those
+# libraries are not part of the plugin's install set, so the plugin could only
+# resolve them through a build-machine path — the bundle ran on the dev box and
+# nowhere else. Ship them alongside the plugin so $ORIGIN finds them, and so the
+# RPM can provide those sonames instead of demanding them from the host.
+set(SOLOUD_VENDORED_LIBS_DIR
+  "${CMAKE_CURRENT_SOURCE_DIR}/flutter/ephemeral/.plugin_symlinks/flutter_soloud/linux/libs")
+if(EXISTS "${SOLOUD_VENDORED_LIBS_DIR}")
+  install(DIRECTORY "${SOLOUD_VENDORED_LIBS_DIR}/"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime
+    FILES_MATCHING PATTERN "*.so*")
+endif()
 
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/linux/")

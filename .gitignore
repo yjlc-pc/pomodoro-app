@@ -55,3 +55,8 @@ rpmbuild/SOURCES/*.tar.gz
 rpmbuild/RPMS/
 rpmbuild/BUILD/
 rpmbuild/SRPMS/
+
+# Stray roots a mis-rooted %install can create (the package installs to
+# /opt and /usr, which must never land inside the packaging dir).
+rpmbuild/opt/
+rpmbuild/usr/
