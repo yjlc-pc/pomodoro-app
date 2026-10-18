@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -48,10 +50,50 @@ class _TodoPanelState extends State<TodoPanel> {
   /// several can be open at once.
   final Set<String> _expanded = <String>{};
 
+  /// Todos that have just been ticked but are still being shown in their old
+  /// section. The store re-sorts the list the instant [TodoStore.toggle] runs;
+  /// letting the row teleport to the done section at the same time as the
+  /// checkbox plays its 340 ms fill+tick animation makes the two motions fight.
+  /// Hold the row here until the animation has finished, then let it settle.
+  final Map<String, Timer> _justDone = <String, Timer>{};
+
+  static const _settleDelay = Duration(milliseconds: 420);
+
   void _toggleExpanded(String id) {
     setState(() {
       if (!_expanded.remove(id)) _expanded.add(id);
     });
+  }
+
+  void _toggleTodo(String id, TodoStore store) {
+    final wasDone = store.items
+        .where((item) => item.id == id)
+        .map((item) => item.done)
+        .firstOrNull;
+    if (wasDone == null) return;
+    store.toggle(id);
+    if (wasDone) {
+      // Unticking: move back to the pending section right away. The reverse
+      // direction has no animation to collide with, so there is nothing worth
+      // delaying here.
+      _justDone.remove(id)?.cancel();
+      setState(() {});
+      return;
+    }
+    // Ticking: keep it in the pending section for [duration], then re-sort.
+    _justDone.remove(id)?.cancel();
+    _justDone[id] = Timer(_settleDelay, () {
+      _justDone.remove(id);
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final timer in _justDone.values) {
+      timer.cancel();
+    }
+    super.dispose();
   }
 
   @override
@@ -99,7 +141,7 @@ class _TodoPanelState extends State<TodoPanel> {
           variant: widget.wide ? TodoTileVariant.card : TodoTileVariant.list,
           expanded: _expanded.contains(item.id),
           onExpandedChanged: () => _toggleExpanded(item.id),
-          onToggle: () => store.toggle(item.id),
+          onToggle: () => _toggleTodo(item.id, store),
           onRemove: () => store.remove(item.id),
           onOpenDetail: () => showTodoDetailSheet(context, item.id),
           onToggleSubtask: (subId) => store.toggleSubtask(item.id, subId),
@@ -119,8 +161,12 @@ class _TodoPanelState extends State<TodoPanel> {
       );
     }
 
-    final pending = items.where((item) => !item.done).toList();
-    final done = items.where((item) => item.done).toList();
+    final doneSet = _justDone.keys.toSet();
+    final pending =
+        items.where((item) => !item.done || doneSet.contains(item.id)).toList();
+    final done = items
+        .where((item) => item.done && !doneSet.contains(item.id))
+        .toList();
     final bottom = widget.bottomInset ?? 96;
 
     return SliverPadding(
