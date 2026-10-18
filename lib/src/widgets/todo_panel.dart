@@ -88,6 +88,13 @@ class _TodoPanelState extends State<TodoPanel> {
     }
 
     Widget tileFor(TodoItem item) => TodoTile(
+          // Keyed at the outermost level, not just on the inner Dismissible.
+          // SliverList matches its children by *index*, so without a key here
+          // ticking a todo (which re-sorts the list, done last) recycles each
+          // row's State onto a different todo — the checkbox's animation
+          // controller then belongs to another item and never plays for the one
+          // you actually clicked.
+          key: ValueKey(item.id),
           item: item,
           variant: widget.wide ? TodoTileVariant.card : TodoTileVariant.list,
           expanded: _expanded.contains(item.id),

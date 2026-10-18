@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
@@ -42,6 +43,15 @@ Future<void> main() async {
   // settings screen offers is really wired to the timer.
   timer.onPhaseChanged = (_) {
     if (settingsController.settings.soundEnabled) ambientPlayer.playChime();
+    // Vibration is a second, silent channel for when the chime is off or the
+    // device is muted. Desktop has no haptic hardware, so only ask on mobile.
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+        HapticFeedback.mediumImpact();
+      case _:
+        break;
+    }
   };
 
   runApp(PomodoroApp(

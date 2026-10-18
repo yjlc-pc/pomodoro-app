@@ -40,6 +40,16 @@ class _AnimatedCheckState extends State<AnimatedCheck>
   );
 
   @override
+  void initState() {
+    super.initState();
+    // Start in sync with the incoming value. The controller begins at 0, and
+    // nothing else ever forwards it unless [didUpdateWidget] sees a *change —
+    // so a todo that is already completed when it is first built would render
+    // as an empty box.
+    if (widget.checked) _controller.value = 1;
+  }
+
+  @override
   void didUpdateWidget(AnimatedCheck oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.checked == oldWidget.checked) return;
