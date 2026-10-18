@@ -93,13 +93,19 @@ enum TodoTileVariant { list, card }
 
 /// Colour of the priority bar. `low` deliberately gets no bar at all: absence
 /// is the signal, so an unremarkable todo stays visually quiet.
+///
+/// A completed todo keeps its bar, just faded back. Dropping it entirely made
+/// a finished row lose *all* of its metadata at once — the bar and the label
+/// below the title both vanished, so ticking a todo turned it into a bare
+/// title and read like a rendering failure rather than like a finished one.
 Color? priorityBarColor(ColorScheme scheme, TodoItem item) {
-  if (item.done) return null;
-  return switch (item.priority) {
+  final base = switch (item.priority) {
     TodoPriority.high => scheme.error,
     TodoPriority.normal => scheme.primary,
     TodoPriority.low => null,
   };
+  if (base == null) return null;
+  return item.done ? base.withValues(alpha: 0.32) : base;
 }
 
 /// Completed items drop to reduced emphasis: struck-through text on
@@ -117,13 +123,19 @@ TextStyle _titleStyle(BuildContext context, bool done) {
 /// The secondary line under the title: the priority label, then the
 /// description. Returns null when there is nothing worth saying, so quiet
 /// todos stay a single line tall.
+///
+/// Completed todos keep it — see [priorityBarColor] for why removing all of a
+/// finished row's metadata at once is a worse signal than dimming it.
 Widget? _subLine(BuildContext context, TodoItem item) {
-  if (item.done) return null;
   final scheme = Theme.of(context).colorScheme;
   final style = Theme.of(context)
       .textTheme
       .bodySmall
-      ?.copyWith(color: scheme.onSurfaceVariant);
+      ?.copyWith(
+        color: item.done
+            ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
+            : scheme.onSurfaceVariant,
+      );
 
   final parts = <String>[
     if (item.priority != TodoPriority.low) item.priority.label,

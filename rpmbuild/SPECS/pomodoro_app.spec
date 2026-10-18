@@ -1,5 +1,5 @@
 Name:           pomodoro_app
-Version:        0.0.1
+Version:        0.0.2
 Release:        1%{?dist}
 Summary:        A Material Design 3 Pomodoro timer app built with Flutter.
 
@@ -47,7 +47,12 @@ install -m 644 %{SOURCE1} %{buildroot}/usr/share/applications/%{name}.desktop
 /usr/share/applications/%{name}.desktop
 
 %changelog
-* Sun Oct 18 2026 yjlc <yjlc.18979607766@outlook.com> - 0.0.1-1
+* Sun Oct 18 2026 yjlc <yjlc.18979607766@outlook.com> - 0.0.2-1
+- Ticking a todo animates again. Rows are keyed, so re-sorting the list no
+  longer recycles a row's checkbox animation onto a different todo, and a todo
+  that is already completed renders as ticked from the first frame.
+- Switching pages fades the incoming one in, and a phase change is announced
+  with a SnackBar (plus haptics on mobile).
 - Todos gain sub-steps, priority and notes, plus a detail sheet.
 - The countdown ring now consumes rather than accumulates, and is colour-coded
   per phase.
